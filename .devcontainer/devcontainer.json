@@ -1,0 +1,20 @@
+{
+    "name": "M5StickS3-Ultimate-Lab",
+    "build": { "dockerfile": "Dockerfile" },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "platformio.platformio-ide",
+                "ms-vscode.cpptools",
+                "ms-python.python",
+                "saoudrizwan.claude-dev" 
+            ]
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:1": {}
+    },
+    // 起動時にOllamaを起動し、コンテナを維持する
+    "postStartCommand": "nohup ollama serve > /tmp/ollama.log 2>&1 &",
+    "remoteUser": "vscode"
+}

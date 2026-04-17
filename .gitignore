@@ -1,0 +1,21 @@
+# PlatformIO
+.pio/
+build/
+
+# IDE
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.pem
+*.key
+
+# Firmware binaries
+*.bin
+*.elf
+*.map
