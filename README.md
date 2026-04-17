@@ -77,6 +77,100 @@ Browser
 Relying Party (Google, etc.)
 ```
 
+### How FIDO2 Works
+
+#### Registration (MakeCredential)
+
+```
+  User                      Browser                    ESP-FIDO                  Server
+   |                          |                           |                         |
+   |  "Sign up with key"      |                           |                         |
+   |------------------------->|                           |                         |
+   |                          |  WebAuthn API             |                         |
+   |                          |  navigator.credentials    |                         |
+   |                          |  .create()                |                         |
+   |                          |                           |                         |
+   |                          |  CTAP2: MakeCredential    |                         |
+   |                          |  (rp, user, challenge)    |                         |
+   |                          |-------------------------->|                         |
+   |                          |                           |                         |
+   |                    Pattern Gate                      |                         |
+   |                  BtnA x4 in 1s                      |                         |
+   |<-----------------------------------------------------|                         |
+   |                          |                           |                         |
+   |                          |  CBOR response            |                         |
+   |                          |  (pubkey, credentialID,   |                         |
+   |                          |   attestation)            |                         |
+   |                          |<--------------------------|                         |
+   |                          |                           |                         |
+   |                          |  Send pubkey+credentialID |                         |
+   |                          |-------------------------->|                         |
+   |                          |                           |  Store pubkey           |
+   |                          |                           |  for this user          |
+```
+
+#### Authentication (GetAssertion)
+
+```
+  User                      Browser                    ESP-FIDO                  Server
+   |                          |                           |                         |
+   |  "Log in with key"       |                           |                         |
+   |------------------------->|                           |                         |
+   |                          |  WebAuthn API             |                         |
+   |                          |  navigator.credentials    |                         |
+   |                          |  .get()                   |                         |
+   |                          |                           |                         |
+   |                          |  CTAP2: GetAssertion      |                         |
+   |                          |  (rp, challenge)          |                         |
+   |                          |-------------------------->|                         |
+   |                          |                           |                         |
+   |                    Pattern Gate                      |                         |
+   |                  BtnA x4 in 1s                      |                         |
+   |<-----------------------------------------------------|                         |
+   |                          |                           |                         |
+   |                          |                           |  Look up stored         |
+   |                          |                           |  pubkey for this user   |
+   |                          |                           |                         |
+   |                          |  CBOR response            |                         |
+   |                          |  (authData, signature)    |                         |
+   |                          |<--------------------------|                         |
+   |                          |                           |                         |
+   |                          |  Verify:                   |                         |
+   |                          |  ECDSA_verify(pubkey,     |                         |
+   |                          |    authData || challenge,  |                         |
+   |                          |    signature)              |                         |
+   |                          |-----------+               |                         |
+   |                          |           |               |                         |
+   |                          |  VALID! <--+               |                         |
+   |                          |                           |  Login OK!              |
+   |                          |------------------------------------------------------->|
+```
+
+#### Pattern Authentication Gate (ESP-FIDO unique)
+
+```
+  Regular Security Key:              ESP-FIDO:
+
+  CTAP2 request received             CTAP2 request received
+         |                                   |
+         v                                   v
+    "Touch the key"                   "WAITING PATTERN..."
+    (button press)                    (BtnA x4 within 1s)
+         |                                   |
+         v                                   v
+    Sign & respond ──────────>    ┌──────────────────────┐
+                                  |  Pattern match?       │
+                                  |                      │
+                                  |   YES               NO│
+                                  |    │                 │  v
+                                  |    v                │  DENIED
+                                  |  AUTHENTICATED       │  (timeout 15s)
+                                  |    │                 │
+                                  |    v                 v
+                                  |  Sign & respond    CTAP2_ERR (0x2E)
+                                  └──────────────────────┘
+```
+
 ### Supported Algorithms
 
 | Alg | COSE ID | Curve |

@@ -3,22 +3,22 @@
 > 最終更新: 2026-04-17
 
 ## プロジェクト概要
-M5StickC S3 (ESP32-S3) を用いた自作FIDO2/CTAP2セキュリティキー
+M5Stackデバイス (ESP32-S3) を用いた自作FIDO2/CTAP2セキュリティキー
 
 ## 現在のバージョン
 - Version: 0.1.0 (開発初期)
 - C++ / Arduino framework + PlatformIO
-- ESP32-S3 (M5StickC S3)
+- マルチターゲット: AtomS3 (プライマリ) / M5StickC S3 (セカンダリ)
 
 ## 実装済み
 
 ### プロジェクト基盤
 | 項目 | 状態 | 備考 |
 |------|------|------|
-| platformio.ini | 完了 | ボード定義、ライブラリ依存、sdkconfig連携 |
-| カスタムボード定義 | 完了 | `boards/m5stickc-s3.json` (8MB Flash, 2MB PSRAM) |
+| platformio.ini | 完了 | マルチ環境構成 (atoms3 / m5stickc-s3) |
+| カスタムボード定義 | 完了 | `boards/m5stickc-s3.json` (AtomS3は標準ボード使用) |
 | sdkconfig.defaults | 完了 | TinyUSB: HIDのみ有効、他無効化 |
-| ビルド成功 | 完了 | RAM 6.3% (20.5KB), Flash 11.4% (382KB), 警告なし |
+| ビルド成功 | 完了 | atoms3: RAM 6.1% (20KB) Flash 10.9% (364KB) / m5stickc-s3: 同規模 |
 | .gitignore | 完了 | .pio/, build/, .env, *.bin 等 |
 | AGENTS.md / CLAUDE.md | 完了 | 作業ルール・プロジェクト固有注意点 |
 | devcontainer | 完了 | pip先行upgrade, libffi-dev等の依存追加、プラットフォーム事前キャッシュ |
@@ -28,12 +28,12 @@ M5StickC S3 (ESP32-S3) を用いた自作FIDO2/CTAP2セキュリティキー
 |------|------|------|
 | HIDレポートディスクリプタ | 完了 | `src/hid_descriptor.h` Usage Page 0xF1D0, 64B |
 | TinyUSB初期化 | 完了 | `Adafruit_USBD_HID` + OUT endpoint有効 |
-| HIDコールバック枠 | 完了 | get_report/set_report 雛形のみ |
+| HIDコールバック枠 | 完了 | get_report/set_report 雏形のみ |
 
 ### 表示
 | 項目 | 状態 | 備考 |
 |------|------|------|
-| M5GFX初期化 | 完了 | rotation=1, textSize=2 |
+| M5GFX初期化 | 完了 | `#ifdef ATOMS3` / `#ifdef M5STICKC_S3` で分岐 |
 | "READY"表示 | 完了 | 起動時にLCD表示 |
 
 ## 未実装
@@ -55,7 +55,7 @@ M5StickC S3 (ESP32-S3) を用いた自作FIDO2/CTAP2セキュリティキー
 
 ### パターン認証ゲート
 - [ ] 状態遷移 (IDLE→WAITING→COUNTING→AUTHED/REJECTED)
-- [ ] BtnA押下検出 (GPIO37, 1秒以内4回)
+- [ ] BtnA押下検出 (AtomS3: GPIO41, M5StickC S3: GPIO37, 1秒以内4回)
 - [ ] タイムアウト処理 (15秒)
 - [ ] LCD進捗表示 ("WAITING PATTERN...", "●●●○", "AUTHENTICATED", "DENIED")
 
@@ -64,7 +64,7 @@ M5StickC S3 (ESP32-S3) を用いた自作FIDO2/CTAP2セキュリティキー
 ```
 esp-fido/
 ├── boards/
-│   └── m5stickc-s3.json       # カスタムボード定義
+│   └── m5stickc-s3.json       # カスタムボード定義 (AtomS3は標準)
 ├── docs/
 │   └── current-state.md       # このファイル
 ├── src/
@@ -74,7 +74,7 @@ esp-fido/
 │   ├── devcontainer.json      # VS Code設定, USBデバイスパススルー
 │   └── Dockerfile             # PlatformIO + pip + 依存lib事前キャッシュ
 ├── sdkconfig.defaults          # TinyUSB: HIDのみ有効
-├── platformio.ini
+├── platformio.ini              # マルチ環境 (atoms3 / m5stickc-s3)
 ├── .gitignore
 ├── AGENTS.md
 ├── CLAUDE.md
@@ -83,8 +83,10 @@ esp-fido/
 
 ## 既知の注意点
 - M5StickC S3はPlatformIOにボード定義がないため、カスタム定義 (`boards/m5stickc-s3.json`) を使用
+- AtomS3はPlatformIO標準ボード (`m5stack-atoms3`) を使用、PSRAMなし
 - ESP32-S3 ArduinoのTinyUSB設定は `sdkconfig.defaults` で制御（`CFG_TUD_*`でなく `CONFIG_TINYUSB_*` を使う）
 - `Adafruit_USBD_HID::setReportCallback` は2引数 (get_report, set_report) 必須
 - TinyUSBの付属依存（SPIFlash, NeoPixel, SdFat, MIDI）はFIDO2不要。将来lib_depsから除外して軽量化可
 - 実機テストはユーザー環境のみ（devcontainerにシリアルデバイスなし）
 - ブラウザCTAP2タイムアウト30秒に対し、パターン入力待ちは15秒に設計
+- AtomS3のBtnAはGPIO41 (M5StickC S3はGPIO37)

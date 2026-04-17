@@ -5,7 +5,7 @@
 #include "hid_descriptor.h"
 
 // --- USB HID Instance ---
-// has_out_endpoint=true: CTAP2 uses OUT endpoint for host→device
+// has_out_endpoint=true: CTAP2 uses OUT endpoint for host->device
 Adafruit_USBD_HID usb_hid(hid_report_descriptor, hid_report_descriptor_len,
                            HID_ITF_PROTOCOL_NONE, 2, true);
 
@@ -43,8 +43,15 @@ void setup() {
 
   // Display init
   display.init();
+#if defined(ATOMS3)
+  // AtomS3: 0.96" 128x128, button-friendly rotation
   display.setRotation(1);
   display.setTextSize(2);
+#elif defined(M5STICKC_S3)
+  // M5StickC S3: 1.14" 135x240
+  display.setRotation(1);
+  display.setTextSize(2);
+#endif
   display.fillScreen(TFT_BLACK);
   display.setTextColor(TFT_WHITE);
   display.setCursor(0, 0);
