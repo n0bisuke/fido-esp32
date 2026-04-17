@@ -1,6 +1,6 @@
 # CLAUDE.md
 @AGENTS.md
-@README.md
+@docs/current-state.md
 
 ## Claude Code 固有ルール
 - 日本語でコミュニケーションすること

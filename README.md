@@ -261,7 +261,7 @@ pio device monitor
 ## Current Status
 
 - [x] 仕様定義 (this README)
-- [ ] USB HID デバイス実装
+- [x] USB HID デバイス実装 (ディスクリプタ定義、TinyUSB設定、ビルド成功)
 - [ ] CBOR パーサー/エンコーダ
 - [ ] CTAP2 コマンド実装 (MakeCredential, GetAssertion, GetInfo)
 - [ ] パターン認証ゲート

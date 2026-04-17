@@ -1,5 +1,5 @@
 {
-    "name": "M5StickS3-Ultimate-Lab",
+    "name": "ESP-FIDO Dev (M5StickC S3)",
     "build": { "dockerfile": "Dockerfile" },
     "customizations": {
         "vscode": {
@@ -7,14 +7,34 @@
                 "platformio.platformio-ide",
                 "ms-vscode.cpptools",
                 "ms-python.python",
-                "saoudrizwan.claude-dev" 
-            ]
+                "saoudrizwan.claude-dev"
+            ],
+            "settings": {
+                "C_Cpp.default.compilerPath": "/home/vscode/.platformio/packages/toolchain-xtensa-esp32s3/bin/xtensa-esp32s3-elf-g++",
+                "C_Cpp.default.intelliSenseMode": "gcc-x64",
+                "C_Cpp.default.defines": [
+                    "ESP32S3",
+                    "M5STICKC_S3",
+                    "ARDUINO",
+                    "ARDUINO_USB_MODE=1",
+                    "ARDUINO_USB_CDC_ON_BOOT=1",
+                    "BOARD_HAS_PSRAM"
+                ],
+                "files.associations": {
+                    "*.ino": "cpp"
+                }
+            }
         }
     },
     "features": {
         "ghcr.io/devcontainers/features/common-utils:1": {}
     },
-    // 起動時にOllamaを起動し、コンテナを維持する
     "postStartCommand": "nohup ollama serve > /tmp/ollama.log 2>&1 &",
+    // 実機フラッシュ時のUSBデバイスアクセス用
+    // M5StickC S3はUSB-CでPCに直結するため、/dev/ttyACM0等が現れる
+    "runArgs": [
+        "--device=/dev/ttyACM0",
+        "--device=/dev/ttyUSB0"
+    ],
     "remoteUser": "vscode"
 }

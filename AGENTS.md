@@ -17,7 +17,7 @@
 ## コード方針
 - C++ (Arduino framework) + PlatformIO を使う。
 - 1ファイルあたり約400行以下を目安にすること。大きくなったら責務ごとに分割する。
-- 外部ライブラリ: Adafruit TinyUSB, M5StickC-S3, micro-ecc, ArduinoCBOR
+- 外部ライブラリ: Adafruit TinyUSB, M5GFX, micro-ecc, tinycbor
 - コメントは最小限にし、非自明な処理にだけ付けること。
 - 秘密情報（Master Secret等）はソースコードにハードコードせず、NVS (encrypted) に保存すること。
 - CTAP2仕様に準拠すること。独自拡張はパターン認証ゲートのみ。
@@ -41,8 +41,13 @@ esp-fido/
 │   ├── crypto_wrapper.cpp      # micro-ecc + esp_sha integration
 │   └── key_storage.h           # NVS key storage interface
 │   └── key_storage.cpp
+├── boards/                    # カスタムボード定義
+│   └── m5stickc-s3.json
+├── docs/
+│   └── current-state.md       # 実装状態サマリ
 ├── lib/                        # PlatformIO管理のライブラリ
 ├── test/                       # ユニットテスト（将来）
+├── sdkconfig.defaults          # TinyUSB sdkconfig上書き
 ├── platformio.ini
 ├── AGENTS.md
 ├── CLAUDE.md
@@ -64,12 +69,12 @@ esp-fido/
 
 ## ログ・記録ルール
 「ログに残して」「記録して」などの指示があった場合、以下を更新すること：
-1. `README.md` の Current Status セクション
+1. `docs/current-state.md` — 実装状態サマリ（必須）
 2. `AGENTS.md` のステータス欄 — ステータスが大きく変わった場合のみ
 
 ## 現在のステータス
-- フェーズ: 仕様定義完了、実装未着手
-- 詳細な実装状態は README.md の Current Status を参照
+- フェーズ: 初期ビルド成功、CTAP2実装前
+- 詳細な実装状態は docs/current-state.md を参照
 
 ## 検証
 - コード変更後は `pio run -e m5stickc-s3` でビルドを確認すること。
