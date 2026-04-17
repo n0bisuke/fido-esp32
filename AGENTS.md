@@ -73,7 +73,7 @@ esp-fido/
 2. `AGENTS.md` のステータス欄 — ステータスが大きく変わった場合のみ
 
 ## 現在のステータス
-- フェーズ: 初期ビルド成功、CTAP2実装前
+- フェーズ: authenticatorGetInfo動作確認済み、MakeCredential/GetAssertion未実装
 - 詳細な実装状態は docs/current-state.md を参照
 
 ## 検証
