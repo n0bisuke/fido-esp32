@@ -54,5 +54,6 @@
 
 void ctap2_init();
 void ctap2_process_hid_report(const uint8_t *buf, uint16_t len);
+void ctap2_process_pending();
 
 #endif // CTAP2_H

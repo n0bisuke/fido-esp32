@@ -1,10 +1,20 @@
 #include "ctap2.h"
 #include "authenticator.h"
 #include <Adafruit_TinyUSB.h>
+#include <M5GFX.h>
+#include <Arduino.h>
 #include <string.h>
 
 // External USB HID instance (defined in main.cpp)
 extern Adafruit_USBD_HID usb_hid;
+extern M5GFX display;
+
+static void lcd_status(const char *msg) {
+  display.fillRect(0, 16, 128, 16, TFT_BLACK);
+  display.setCursor(0, 16);
+  display.setTextSize(1);
+  display.print(msg);
+}
 
 // --- TX state (outgoing multi-packet response) ---
 static struct {
@@ -29,6 +39,14 @@ static struct {
 
 // --- Channel ID allocation ---
 static uint32_t next_cid = 1;
+
+// --- Pending request (deferred to main loop for sufficient stack) ---
+static struct {
+  uint8_t data[CTAPHID_MAX_MSG_SIZE];
+  uint16_t len;
+  uint32_t cid;
+  bool pending;
+} pending_req;
 
 static uint32_t allocate_cid() {
   uint32_t cid = next_cid++;
@@ -148,24 +166,38 @@ static void ctap2_handle_msg(uint32_t cid, const uint8_t *data, uint16_t len) {
   switch (ctap_cmd) {
   case CTAP2_GET_INFO:
     authenticator_get_info(resp, &resp_len);
+    ctap2_send_response(cid, CTAPHID_MSG, resp, resp_len);
     break;
   case CTAP2_MAKE_CREDENTIAL:
   case CTAP2_GET_ASSERTION:
+    // Defer heavy crypto to main loop (needs more stack than HID callback context)
+    if (pending_req.pending) {
+      resp[0] = CTAP2_ERR_ACTION_TIMEOUT;
+      resp_len = 1;
+      ctap2_send_response(cid, CTAPHID_MSG, resp, resp_len);
+    } else {
+      memcpy(pending_req.data, data, len);
+      pending_req.len = len;
+      pending_req.cid = cid;
+      pending_req.pending = true;
+      lcd_status(ctap_cmd == CTAP2_MAKE_CREDENTIAL ? "MC..." : "GA...");
+    }
+    break;
   case CTAP2_SELECTION:
-    resp[0] = CTAP2_ERR_INVALID_COMMAND;
-    resp_len = 1;
+    authenticator_selection(resp, &resp_len);
+    ctap2_send_response(cid, CTAPHID_MSG, resp, resp_len);
     break;
   default:
     resp[0] = CTAP2_ERR_INVALID_COMMAND;
     resp_len = 1;
+    ctap2_send_response(cid, CTAPHID_MSG, resp, resp_len);
     break;
   }
-
-  ctap2_send_response(cid, CTAPHID_MSG, resp, resp_len);
 }
 
 // --- Dispatch fully reassembled CTAPHID command ---
 static void ctap2_dispatch(uint32_t cid, uint8_t cmd, const uint8_t *data, uint16_t len) {
+  lcd_status(cmd == CTAPHID_INIT ? "INIT" : cmd == CTAPHID_MSG ? "MSG" : "PING");
   switch (cmd) {
   case CTAPHID_INIT:
     ctap2_handle_init(cid, data, len);
@@ -240,4 +272,31 @@ void ctap2_process_hid_report(const uint8_t *buf, uint16_t len) {
 void ctap2_init() {
   memset(&tx_state, 0, sizeof(tx_state));
   memset(&rx_state, 0, sizeof(rx_state));
+  memset(&pending_req, 0, sizeof(pending_req));
+}
+
+// --- Process pending MakeCredential/GetAssertion (called from main loop) ---
+void ctap2_process_pending() {
+  if (!pending_req.pending) return;
+  pending_req.pending = false;
+
+  uint8_t resp[CTAPHID_MAX_MSG_SIZE];
+  size_t resp_len = 0;
+
+  switch (pending_req.data[0]) {
+  case CTAP2_MAKE_CREDENTIAL:
+    authenticator_make_credential(pending_req.data, pending_req.len, resp, &resp_len);
+    break;
+  case CTAP2_GET_ASSERTION:
+    authenticator_get_assertion(pending_req.data, pending_req.len, resp, &resp_len);
+    break;
+  default:
+    resp[0] = CTAP2_ERR_INVALID_COMMAND;
+    resp_len = 1;
+    break;
+  }
+
+  Serial.printf("[CTAP2] pending response: status=0x%02x len=%u\n", resp[0], resp_len);
+  lcd_status(resp[0] == CTAP2_OK ? "OK" : "ERR");
+  ctap2_send_response(pending_req.cid, CTAPHID_MSG, resp, resp_len);
 }

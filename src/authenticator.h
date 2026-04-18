@@ -7,9 +7,9 @@
 // AAGUID: all zeros for self-attestation
 static const uint8_t AAGUID[16] = {0};
 
-// authenticatorGetInfo: returns CTAP2 status byte
-// Writes status byte at buf[0], CBOR payload starting at buf[1]
-// Sets out_len to total bytes written (1 + CBOR length)
 uint8_t authenticator_get_info(uint8_t *buf, size_t *out_len);
+uint8_t authenticator_make_credential(const uint8_t *data, size_t data_len, uint8_t *resp, size_t *resp_len);
+uint8_t authenticator_get_assertion(const uint8_t *data, size_t data_len, uint8_t *resp, size_t *resp_len);
+uint8_t authenticator_selection(uint8_t *resp, size_t *resp_len);
 
 #endif // AUTHENTICATOR_H
