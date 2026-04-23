@@ -1,5 +1,5 @@
 {
-    "name": "ESP-FIDO Dev (M5StickC S3)",
+    "name": "ESP32-FIDO Dev",
     "build": { "dockerfile": "Dockerfile" },
     "customizations": {
         "vscode": {
@@ -14,10 +14,10 @@
                 "C_Cpp.default.intelliSenseMode": "gcc-x64",
                 "C_Cpp.default.defines": [
                     "ESP32S3",
-                    "M5STICKC_S3",
+                    "XIAO_ESP32S3",
                     "ARDUINO",
-                    "ARDUINO_USB_MODE=1",
-                    "ARDUINO_USB_CDC_ON_BOOT=1",
+                    "ARDUINO_USB_MODE=0",
+                    "ARDUINO_USB_CDC_ON_BOOT=0",
                     "BOARD_HAS_PSRAM"
                 ],
                 "files.associations": {
@@ -30,11 +30,11 @@
         "ghcr.io/devcontainers/features/common-utils:1": {}
     },
     "postStartCommand": "nohup ollama serve > /tmp/ollama.log 2>&1 &",
-    // 実機フラッシュ時のUSBデバイスアクセス用
-    // M5StickC S3はUSB-CでPCに直結するため、/dev/ttyACM0等が現れる
-    "runArgs": [
-        "--device=/dev/ttyACM0",
-        "--device=/dev/ttyUSB0"
-    ],
+    // 実機フラッシュ時のUSBデバイスアクセス用（PlatformIO Remote Agent推奨）
+    // XIAO ESP32-S3はUSB-CでPCに直結、/dev/cu.usbmodem* または /dev/ttyACM0 が現れる
+    // "runArgs": [
+        // "--device=/dev/ttyACM0",
+        // "--device=/dev/ttyUSB0"
+    // ],
     "remoteUser": "vscode"
 }

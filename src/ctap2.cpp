@@ -1,20 +1,13 @@
 #include "ctap2.h"
 #include "authenticator.h"
 #include <Adafruit_TinyUSB.h>
-#include <M5GFX.h>
+#include <USB.h>
 #include <Arduino.h>
 #include <string.h>
 
-// External USB HID instance (defined in main.cpp)
+// External USB instances (defined in main.cpp)
 extern Adafruit_USBD_HID usb_hid;
-extern M5GFX display;
-
-static void lcd_status(const char *msg) {
-  display.fillRect(0, 16, 128, 16, TFT_BLACK);
-  display.setCursor(0, 16);
-  display.setTextSize(1);
-  display.print(msg);
-}
+extern bool debug_mode;
 
 // --- TX state (outgoing multi-packet response) ---
 static struct {
@@ -180,7 +173,7 @@ static void ctap2_handle_msg(uint32_t cid, const uint8_t *data, uint16_t len) {
       pending_req.len = len;
       pending_req.cid = cid;
       pending_req.pending = true;
-      lcd_status(ctap_cmd == CTAP2_MAKE_CREDENTIAL ? "MC..." : "GA...");
+      if (debug_mode) Serial.printf("[CTAP2] pending: %s\n", ctap_cmd == CTAP2_MAKE_CREDENTIAL ? "MakeCredential" : "GetAssertion");
     }
     break;
   case CTAP2_SELECTION:
@@ -197,7 +190,8 @@ static void ctap2_handle_msg(uint32_t cid, const uint8_t *data, uint16_t len) {
 
 // --- Dispatch fully reassembled CTAPHID command ---
 static void ctap2_dispatch(uint32_t cid, uint8_t cmd, const uint8_t *data, uint16_t len) {
-  lcd_status(cmd == CTAPHID_INIT ? "INIT" : cmd == CTAPHID_MSG ? "MSG" : "PING");
+  const char *name = cmd == CTAPHID_INIT ? "INIT" : cmd == CTAPHID_MSG ? "MSG" : "PING";
+  if (debug_mode) Serial.printf("[CTAPHID] %s cid=0x%06X len=%u\n", name, cid, len);
   switch (cmd) {
   case CTAPHID_INIT:
     ctap2_handle_init(cid, data, len);
@@ -296,7 +290,6 @@ void ctap2_process_pending() {
     break;
   }
 
-  Serial.printf("[CTAP2] pending response: status=0x%02x len=%u\n", resp[0], resp_len);
-  lcd_status(resp[0] == CTAP2_OK ? "OK" : "ERR");
+  if (debug_mode) Serial.printf("[CTAP2] response: status=0x%02x len=%u\n", resp[0], resp_len);
   ctap2_send_response(pending_req.cid, CTAPHID_MSG, resp, resp_len);
 }

@@ -1,6 +1,6 @@
-# ESP-FIDO: M5StickC S3 FIDO2 Security Key
+# ESP-FIDO: XIAO ESP32-S3 FIDO2 Security Key
 
-M5StickC S3 (ESP32-S3) を用いた自作FIDO2/CTAP2セキュリティキー。  
+Seeed Studio XIAO ESP32-S3 を用いた自作FIDO2/CTAP2セキュリティキー。
 Googleアカウント等のWebAuthnログインに使用可能。
 
 通常の「ボタン1回押し」によるユーザー承認を、**パターン認証ゲート**に置き換えている点が特徴。
@@ -10,10 +10,10 @@ Googleアカウント等のWebAuthnログインに使用可能。
 | Item | Spec |
 |------|------|
 | MCU | ESP32-S3 (Dual-core 240MHz, 512KB SRAM) |
-| Board | M5StickC S3 |
+| Board | Seeed Studio XIAO ESP32-S3 |
 | USB | USB-C (ESP32-S3 内蔵 USB-OTG) |
-| Display | 1.14" IPS LCD (135x240, ST7789) |
-| Buttons | BtnA (GPIO37: 内蔵), BtnB (GPIO35: 側面, オプション) |
+| LED | RGB NeoPixel (WS2812B) |
+| Button | BOOT (GPIO0) |
 | Flash | 8MB (PSRAM 2MB) |
 
 ## Framework & Build
@@ -23,16 +23,11 @@ Googleアカウント等のWebAuthnログインに使用可能。
 - **Build System**: PlatformIO
 
 ```ini
-; platformio.ini (予定)
-[env:m5stickc-s3]
+[env:xiao-esp32s3]
 platform = espressif32
-board = m5stickc-s3
+board = seeed_xiao_esp32s3-tinyusb
 framework = arduino
-lib_deps =
-    adafruit/Adafruit TinyUSB Library @ ^2.3
-    m5stack/M5StickC-S3 @ ^0.1.0
-    micro-ecc/micro-ecc @ ^1.0
-    qubole/ArduinoCBOR @ ^0.5
+build_flags = -DXIAO_ESP32S3
 ```
 
 ## FIDO2/CTAP2 Specification
@@ -58,10 +53,10 @@ Collection:     Application
 |---------|------|--------|
 | `authenticatorMakeCredential` | 0x01 | Implement |
 | `authenticatorGetAssertion` | 0x02 | Implement |
-| `authenticatorGetInfo` | 0x04 | Implement |
+| `authenticatorGetInfo` | 0x04 | Implemented |
 | `authenticatorClientPIN` | 0x06 | Future |
 | `authenticatorReset` | 0x07 | Future |
-| `authenticatorSelection` | 0x0B | Implement |
+| `authenticatorSelection` | 0x0B | Implemented |
 
 ### CTAP2 Message Flow
 
@@ -95,7 +90,7 @@ Relying Party (Google, etc.)
    |                          |-------------------------->|                         |
    |                          |                           |                         |
    |                    Pattern Gate                      |                         |
-   |                  BtnA x4 in 1s                      |                         |
+   |                  BOOT x4 in 1s                      |                         |
    |<-----------------------------------------------------|                         |
    |                          |                           |                         |
    |                          |  CBOR response            |                         |
@@ -125,7 +120,7 @@ Relying Party (Google, etc.)
    |                          |-------------------------->|                         |
    |                          |                           |                         |
    |                    Pattern Gate                      |                         |
-   |                  BtnA x4 in 1s                      |                         |
+   |                  BOOT x4 in 1s                      |                         |
    |<-----------------------------------------------------|                         |
    |                          |                           |                         |
    |                          |                           |  Look up stored         |
@@ -155,7 +150,7 @@ Relying Party (Google, etc.)
          |                                   |
          v                                   v
     "Touch the key"                   "WAITING PATTERN..."
-    (button press)                    (BtnA x4 within 1s)
+    (button press)                    (BOOT x4 within 1s)
          |                                   |
          v                                   v
     Sign & respond ──────────>    ┌──────────────────────┐
@@ -188,7 +183,7 @@ Relying Party (Google, etc.)
 
 ### Pattern Rule
 
-- **BtnAを1秒以内に4回連続押し** → 承認
+- **BOOTボタン(GPIO0)を1秒以内に4回連続押し** → 承認
 - それ以外の入力 → 拒否（無応答またはエラー）
 - タイムアウト: 要求受信から**15秒**（ブラウザCTAP2タイムアウト30秒に対する余裕）
 
@@ -201,12 +196,12 @@ Relying Party (Google, etc.)
                          │ CTAP2 request受信
                          ▼
                     ┌──────────┐
-            ┌──────│ WAITING  │ ← LCD: "WAITING PATTERN..."
+            ┌──────│ WAITING  │ ← Serial: "WAITING PATTERN..."
             │      └────┬─────┘
-            │           │ BtnA press
+            │           │ BOOT press
             │           ▼
             │      ┌──────────┐
-            │      │ COUNTING │ ← LCD: "●●●○" (進捗表示)
+            │      │ COUNTING │ ← Serial: "●●●○" (進捗表示)
             │      └────┬─────┘
             │           │
             │    ┌──────┼──────────────┐
@@ -227,11 +222,11 @@ Relying Party (Google, etc.)
 
 ### Display States
 
-| State | LCD表示 | 備考 |
-|-------|---------|------|
+| State | Serial出力 | 備考 |
+|-------|-----------|------|
 | IDLE | `READY` | 通常待機 |
 | WAITING | `WAITING PATTERN...` | CTAP2要求受信後 |
-| COUNTING | `●●●○` (押下回数分) | BtnA押下ごとに●が増加 |
+| COUNTING | `●●●○` (押下回数分) | BOOT押下ごとに●が増加 |
 | AUTHED | `AUTHENTICATED` (2秒間) | 署名成功後 |
 | REJECTED | `DENIED` (2秒間) | パターン不一致/タイムアウト |
 
@@ -246,10 +241,9 @@ Relying Party (Google, etc.)
 | Purpose | Library | Reason |
 |---------|---------|--------|
 | USB HID | Adafruit TinyUSB | ESP32-S3内蔵USB-OTG対応、HID descriptor柔軟設定 |
-| CBOR decode/encode | ArduinoCBOR (qubole) | 軽量CBOR実装、CTAP2メッセージの解析・生成 |
+| CBOR decode/encode | tinycbor | 軽量CBOR実装、CTAP2メッセージの解析・生成 |
 | ECDSA (P-256) | micro-ecc | 最小フットプリントのECCライブラリ、ESP32対応 |
 | SHA-256 | ESP32 hardware SHA (mbedTLS) | ESP-IDF内蔵、ハードウェアアクセラレーションあり |
-| Display | M5StickC-S3 lib | ST7789 LCD制御、M5GFXベース |
 | RNG | esp_random() | ESP32-S3ハードウェアRNG、FIPS準拠 |
 
 ## Security Design
@@ -283,7 +277,7 @@ Master Secret (32B, ランダム生成)
 | Threat | Mitigation |
 |--------|-----------|
 | USB経由の鍵抽出 | 秘密鍵はUSB経由で読み出し不可（CTAP2仕様に鍵エクスポートなし） |
-| パターンの肩越し盗み見 | LCD表示は最小限、パターン入力後すぐにクリア |
+| パターンの肩越し盗み見 | Serial出力は開発時のみ、本番では最小限表示 |
 | Flash読み出し | Flash Encryption有効化で対策 |
 | リプレイ攻撃 | CTAP2チャレンジ(Challenge)による対策 |
 | クローン攻撃 | Master SecretのNVS暗号化 + Flash Encryption |
@@ -312,12 +306,15 @@ ESP32-S3はP-256のハードウェアアクセラレーションを持つ。micr
 - micro-eccの鍵生成・署名に約4KBのスタックが必要
 - ESP32-S3の512KB SRAM + 2MB PSRAMで十分に動作可能
 
-## Project Structure (Planned)
+## Project Structure
 
 ```
 esp-fido/
 ├── README.md
 ├── platformio.ini
+├── sdkconfig.defaults          # TinyUSB sdkconfig上書き
+├── boards/
+│   └── seeed_xiao_esp32s3-tinyusb.json  # カスタムボード定義
 ├── src/
 │   ├── main.cpp                # Entry point, Arduino setup/loop
 │   ├── ctap2.h                 # CTAP2 command definitions
@@ -343,10 +340,10 @@ esp-fido/
 
 ```bash
 # PlatformIOでビルド
-pio run -e m5stickc-s3
+pio run -e xiao-esp32s3
 
 # シリアルポートにフラッシュ
-pio run -e m5stickc-s3 -t upload
+pio run -e xiao-esp32s3 -t upload
 
 # シリアルモニタ
 pio device monitor
@@ -354,12 +351,14 @@ pio device monitor
 
 ## Current Status
 
-- [x] 仕様定義 (this README)
+- [x] 仕様定義
 - [x] USB HID デバイス実装 (ディスクリプタ定義、TinyUSB設定、ビルド成功)
+- [x] authenticatorGetInfo 実装・動作確認
+- [x] XIAO ESP32-S3 移行
 - [ ] CBOR パーサー/エンコーダ
-- [ ] CTAP2 コマンド実装 (MakeCredential, GetAssertion, GetInfo)
+- [ ] CTAP2 MakeCredential 実装
+- [ ] CTAP2 GetAssertion 実装
 - [ ] パターン認証ゲート
 - [ ] ECDSA 署名 (micro-ecc)
 - [ ] NVS 鍵ストレージ
-- [ ] LCD 表示統合
 - [ ] ブラウザテスト (Chrome + WebAuthn)
