@@ -6,12 +6,15 @@
 #include "crypto_wrapper.h"
 #include "key_storage.h"
 
+// --- GPIO21 = built-in LED on XIAO ESP32-S3 ---
+#define LED_PIN 21
+
 // --- USB HID Instance (FIDO2) ---
 Adafruit_USBD_HID usb_hid(hid_report_descriptor, hid_report_descriptor_len,
                            HID_ITF_PROTOCOL_NONE, 2, true);
 
-// --- Debug mode: BOOT button held during first 2 seconds → enable Serial output ---
-bool debug_mode = false;
+// --- Default: debug mode. BOOT button held during first 2 seconds → HID mode ---
+bool debug_mode = true;
 
 // --- HID Callbacks ---
 uint16_t get_report_callback(uint8_t report_id, hid_report_type_t report_type,
@@ -31,12 +34,14 @@ void set_report_callback(uint8_t report_id, hid_report_type_t report_type,
 
 // --- Setup ---
 void setup() {
-  // GPIO21 = built-in LED on XIAO ESP32-S3
-  pinMode(21, OUTPUT);
-  digitalWrite(21, HIGH);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH); // LED on during init
 
-  // BOOT button (GPIO0, active LOW)
+  // BOOT button (GPIO0, active LOW) - check FIRST before any init
   pinMode(0, INPUT_PULLUP);
+  delay(50); // settle time for pull-up
+  debug_mode = (digitalRead(0) == HIGH); // not pressed = debug mode
+  // BOOT pressed during boot = HID mode (debug_mode = false)
 
   // Serial is already initialized by framework (ARDUINO_USB_CDC_ON_BOOT=1)
   ctap2_init();
@@ -46,26 +51,24 @@ void setup() {
   usb_hid.setReportCallback(get_report_callback, set_report_callback);
   usb_hid.begin();
 
-  // Wait for USB enumeration and check BOOT button for debug mode
-  uint32_t start = millis();
-  while (millis() - start < 2000) {
-    if (digitalRead(0) == LOW) {
-      debug_mode = true;
-    }
-    delay(50);
-  }
-
   if (debug_mode) {
+    // Debug mode: LED will blink in loop()
     Serial.println("=== DEBUG MODE ===");
     Serial.println("FIDO2 v0.3 (XIAO ESP32-S3)");
-    Serial.println("BOOT button detected: Serial output enabled");
-    digitalWrite(21, LOW); // LED off = debug mode
+    digitalWrite(LED_PIN, LOW);
   } else {
-    digitalWrite(21, LOW); // LED off after init
+    // HID mode: LED solid on
+    digitalWrite(LED_PIN, HIGH);
   }
 }
 
 // --- Loop ---
 void loop() {
   ctap2_process_pending();
+
+  // Debug mode: LED blink
+  if (debug_mode) {
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+    delay(200);
+  }
 }
